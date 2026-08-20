@@ -1,0 +1,18 @@
+{
+  "name": "chrome-ws",
+  "version": "0.1.0",
+  "description": "Chrome 工作区管理器：通过独立 user-data-dir 并行运行多个 Chrome 实例",
+  "type": "module",
+  "bin": {
+    "chrome-ws": "src/cli/index.js"
+  },
+  "scripts": {
+    "start": "node src/server/server.js",
+    "smoke": "node test/smoke.mjs",
+    "link": "npm link"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
