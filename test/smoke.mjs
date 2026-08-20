@@ -54,6 +54,35 @@ try {
   r = await api('DELETE', `/api/workspaces/${NAME}?purge=1`);
   ok(r.status === 200 && r.data.purged, '删除（含数据目录）');
 
+  // --- 导入继承现有配置 ---
+  const { mkdtempSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const src = mkdtempSync(join(tmpdir(), 'cws-src-'));
+  mkdirSync(join(src, 'Default', 'Extensions', 'ext1', '1.0'), { recursive: true });
+  mkdirSync(join(src, 'Default', 'Cache'), { recursive: true });
+  writeFileSync(join(src, 'Local State'), '{}');
+  writeFileSync(join(src, 'Default', 'Preferences'), '{}');
+  writeFileSync(join(src, 'Default', 'Bookmarks'), '{}');
+  writeFileSync(join(src, 'Default', 'Cookies'), 'cookie');
+  writeFileSync(join(src, 'Default', 'Extensions', 'ext1', '1.0', 'main.js'), 'x');
+  writeFileSync(join(src, 'Default', 'Cache', 'junk'), 'y');
+
+  const IMP = `${NAME}-imp`;
+  r = await api('POST', '/api/workspaces/import', { name: IMP, source: src });
+  ok(r.status === 201, `导入工作区 ${IMP}`);
+  if (r.status === 201) {
+    ok(r.data.import.filesCopied === 4, `复制 4 个文件（排除缓存）: ${r.data.import.filesCopied}`);
+    const { existsSync } = await import('node:fs');
+    const baseDir = r.data.workspace.dir;
+    ok(existsSync(join(baseDir, 'Default', 'Bookmarks')), '书签已复制');
+    ok(existsSync(join(baseDir, 'Default', 'Extensions', 'ext1', '1.0', 'main.js')), '扩展已复制');
+    ok(!existsSync(join(baseDir, 'Default', 'Cache')), 'Cache 已排除');
+    ok(existsSync(join(baseDir, 'Default', 'Cookies')), 'Cookies 已复制');
+  }
+  r = await api('DELETE', `/api/workspaces/${IMP}?purge=1`);
+  ok(r.status === 200, '清理导入工作区');
+
   console.log(failed ? `\n${failed} 项失败` : '\n全部通过 ✅');
   process.exit(failed ? 1 : 0);
 } catch (e) {

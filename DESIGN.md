@@ -81,7 +81,26 @@ chrome-ws   ──> ~/.chrome-ws/data/work        ┐
 | POST | `/api/workspaces/:name/open` | 打开 `{url?}`（未运行则启动；已运行仅开新页） |
 | POST | `/api/workspaces/:name/close` | 关闭（幂等） |
 | DELETE | `/api/workspaces/:name?purge=1` | 删除（`purge=1` 同时删数据目录） |
+| GET  | `/api/import/profiles?from=<path>` | 列出源中的可用 profile |
+| POST | `/api/workspaces/import` | 导入继承现有配置 `{name, source?, profile?, withCache?, withExtensions?, force?, homepage?, notes?}` |
 | GET  | `/` | Web UI |
+
+### 导入（`core/importer.js`）
+
+把源 profile 复制到新工作区的 `user-data-dir/Default`，Chrome 自行重建 `Local State` 等
+目录级文件。源解析顺序：`--from` 省略/`default` → 系统默认 Chrome；直接指向 profile 目录
+（含 `Preferences`/`Bookmarks` 等标记）→ 用之；指向 user-data-dir → 按 `--profile` 选择。
+
+**排除规则**（默认）：运行锁（`SingletonLock`/`SingletonSocket`/`SingletonCookie`/`lockfile`）
+与可再生缓存（`Cache`/`Code Cache`/`GPUCache`/`CacheStorage`/`blob_storage`/`Crashpad` 等）。
+保留用户数据：书签、cookies、密码、历史、IndexedDB、Local Storage、File System、扩展。
+`--with-cache` 保留缓存；`--no-extensions` 跳过体积大户 Extensions。
+
+**运行源保护**：源 user-data-dir 根目录存在锁文件（Chrome 正在运行）时默认拒绝（409），
+提示先退出源 Chrome，或 `--force` 强制。
+
+**同机 cookie/密码可解密**：Chrome 的 cookie/密码加密密钥在 macOS 登录钥匙串
+（`Chrome Safe Storage`）中，与 user-data-dir 无关，因此同机导入后仍能正常解密。
 
 ## 6. CLI 命令
 
@@ -117,7 +136,8 @@ chrome-ws/
 │   │   ├── config.js        # 路径 / 配置加载保存
 │   │   ├── store.js         # 工作区 CRUD + 名称校验
 │   │   ├── launcher.js      # Chrome 启停
-│   │   └── detector.js      # 运行状态检测
+│   │   ├── detector.js      # 运行状态检测
+│   │   └── importer.js      # 导入继承现有配置（源解析 + 排除拷贝）
 │   └── server/
 │       ├── server.js        # HTTP 服务 + 路由
 │       └── ui/index.html    # Web UI（零构建）
@@ -126,5 +146,6 @@ chrome-ws/
 
 ## 9. Roadmap
 
-- **v1.5**：导入现有 Chrome 配置、工作区图标/颜色、启动参数模板、菜单栏常驻
+- **已做**：MVP（B/S + CLI + Web UI + 启停/状态检测）、导入继承现有配置
+- **v1.5**：工作区图标/颜色、启动参数模板、菜单栏常驻、跨 profile 多开
 - **v2**：备份/还原、工作区导出、Windows 支持、自动巡检锁文件清理

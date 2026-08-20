@@ -7,6 +7,7 @@ import { loadConfig, saveConfig, portOf } from '../core/config.js';
 import * as store from '../core/store.js';
 import * as detector from '../core/detector.js';
 import * as launcher from '../core/launcher.js';
+import { DEFAULT_SOURCE, listProfiles, resolveSource, copyProfile, isSourceRunning } from '../core/importer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(__dirname, 'ui');
@@ -53,6 +54,55 @@ const server = http.createServer(async (req, res) => {
     if (parts[0] === 'api') {
       if (parts[1] === 'health' && method === 'GET' && parts.length === 2) {
         return sendJSON(res, 200, { ok: true, version: 1, port: portOf(cfg) });
+      }
+
+      // GET /api/import/profiles?from=<path> —— 列出源中的可用 profile
+      if (parts[1] === 'import' && parts[2] === 'profiles' && parts.length === 3 && method === 'GET') {
+        const from = u.searchParams.get('from');
+        const sourceDir = from && from !== 'default' ? path.resolve(from) : DEFAULT_SOURCE;
+        if (!fs.existsSync(sourceDir)) {
+          return sendJSON(res, 404, { error: `源目录不存在: ${sourceDir}` });
+        }
+        return sendJSON(res, 200, { sourceDir, profiles: listProfiles(sourceDir) });
+      }
+
+      // POST /api/workspaces/import —— 导入继承现有配置
+      if (parts[1] === 'workspaces' && parts[2] === 'import' && parts.length === 3 && method === 'POST') {
+        const body = await readBody(req);
+        const ws = store.addWorkspace(cfg, body);
+        let result;
+        try {
+          result = resolveSource({ from: body.source, profile: body.profile });
+
+          // 源 Chrome 正在运行时，数据库可能处于不一致状态，默认拒绝（可 --force）
+          if (!body.force && isSourceRunning(result.sourceDir)) {
+            throw Object.assign(new Error(
+              `源 Chrome 正在运行（${result.sourceDir}）。请先退出源 Chrome 再导入；确认安全可用 --force 强制`,
+            ), { statusCode: 409 });
+          }
+
+          const imp = await copyProfile(
+            result.profileDir,
+            path.join(ws.dir, 'Default'),
+            { withCache: !!body.withCache, withExtensions: body.withExtensions !== false },
+          );
+          saveConfig(cfg);
+          return sendJSON(res, 201, {
+            workspace: serialize(ws),
+            import: {
+              sourceDir: result.sourceDir,
+              profile: result.profileName,
+              bytesCopied: imp.bytesCopied,
+              filesCopied: imp.filesCopied,
+            },
+          });
+        } catch (e) {
+          // 回滚：删除已建的工作区元数据与目录
+          store.removeWorkspace(cfg, ws.name);
+          fs.rmSync(ws.dir, { recursive: true, force: true });
+          saveConfig(cfg);
+          throw e;
+        }
       }
 
       if (parts[1] === 'workspaces') {

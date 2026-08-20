@@ -17,6 +17,14 @@ Chrome 工作区管理器 (chrome-ws) v0.1.0
 用法:
   chrome-ws server start|stop|status|restart   管理本地服务
   chrome-ws add <name> [--homepage url] [--debug-port n] [--notes "..."]
+  chrome-ws import <name> [options]             导入继承现有 Chrome 配置
+      --from <path|default>   源 user-data-dir / profile 目录（缺省: 系统默认 Chrome）
+      --profile <name>        源内具体 profile（缺省: Default）
+      --with-cache            连同可再生缓存一起复制（体积大，缺省排除）
+      --no-extensions         跳过 Extensions 目录（可省大量空间）
+      --force                 源 Chrome 正在运行时强制导入
+      --homepage url / --notes "..."
+  chrome-ws profiles [--from <path|default>]   列出源中可用 profile
   chrome-ws list                               列出全部工作区
   chrome-ws show <name>                        查看单个工作区
   chrome-ws open <name> [url]                  打开工作区（url 缺省用 homepage）
@@ -121,12 +129,13 @@ function printWorkspaces(list) {
 
 // ---------- 参数解析 ----------
 
-function parseOpts(args, { number = [] } = {}) {
+function parseOpts(args, { number = [], bool = [] } = {}) {
   const out = { _: [] };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
+      if (bool.includes(key)) { out[key] = true; continue; }
       if (number.includes(key)) out[key] = Number(args[++i]);
       else out[key] = args[++i];
     } else {
@@ -134,6 +143,14 @@ function parseOpts(args, { number = [] } = {}) {
     }
   }
   return out;
+}
+
+function formatBytes(n) {
+  if (n == null) return '-';
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)}KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)}MB`;
+  return `${(n / 1024 ** 3).toFixed(2)}GB`;
 }
 
 // ---------- 命令分发 ----------
@@ -176,6 +193,43 @@ async function main() {
       console.log(`${C.green}✔ 已创建工作区:${C.reset} ${C.bold}${ws.name}${C.reset}`);
       console.log(`  目录: ${ws.dir}`);
       if (ws.homepage) console.log(`  首页: ${ws.homepage}`);
+      return;
+    }
+
+    case 'import': {
+      const o = parseOpts(rest, { bool: ['with-cache', 'no-extensions', 'force'] });
+      const name = o._[0];
+      if (!name) { console.error('用法: chrome-ws import <name> [--from path] [--profile p] [--with-cache] [--no-extensions] [--force]'); process.exit(1); }
+      console.log('正在分析源与复制数据，请稍候…');
+      const { workspace, import: imp } = await api('POST', '/api/workspaces/import', {
+        name,
+        source: o.from,
+        profile: o.profile,
+        withCache: o['with-cache'],
+        withExtensions: !o['no-extensions'],
+        force: o.force,
+        homepage: o.homepage,
+        notes: o.notes,
+      });
+      console.log(`${C.green}✔ 已导入工作区:${C.reset} ${C.bold}${workspace.name}${C.reset}`);
+      console.log(`  来源: ${imp.profile}  (${imp.sourceDir})`);
+      console.log(`  复制: ${formatBytes(imp.bytesCopied)} / ${imp.filesCopied} 个文件`);
+      console.log(`  目录: ${workspace.dir}`);
+      console.log(`  下一步: ${C.bold}chrome-ws open ${workspace.name}${C.reset}`);
+      return;
+    }
+
+    case 'profiles': {
+      const o = parseOpts(rest);
+      const from = o.from || 'default';
+      const { sourceDir, profiles } = await api('GET', `/api/import/profiles?from=${encodeURIComponent(from)}`);
+      console.log(`源: ${sourceDir}`);
+      if (!profiles.length) { console.log('（源中没有任何可用 profile）'); return; }
+      for (const p of profiles) {
+        const tag = p.isDefault ? ' *' : '';
+        console.log(`  ${p.name.padEnd(16)} ${(p.displayName || '').padEnd(12)} ${(p.user || '').padEnd(24)} ${p.path}${tag}`);
+      }
+      console.log('(* = 默认 profile)');
       return;
     }
 

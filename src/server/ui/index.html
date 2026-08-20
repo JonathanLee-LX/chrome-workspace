@@ -66,7 +66,20 @@
   </section>
 
   <section class="panel">
-    <h2>工作区列表 <span id="count" style="font-weight:400"></span></h2>
+    <h2>导入现有 Chrome 配置</h2>
+    <form id="importForm" style="display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:10px;">
+      <input name="name" placeholder="名称" required title="字母/数字/-/_"/>
+      <input name="source" placeholder="源 user-data-dir（留空=默认 Chrome）"/>
+      <input name="profile" placeholder="profile（缺省 Default）"/>
+      <button type="submit">导入</button>
+    </form>
+    <label style="font-size:12px;color:var(--muted);margin-top:10px;display:block;">
+      <input type="checkbox" id="withCache" style="width:auto;"/> 连同缓存一起复制（体积大）&nbsp;
+      <input type="checkbox" id="withExtensions" checked style="width:auto;"/> 保留扩展（1G+ 常见）&nbsp;
+      提示：请先退出源 Chrome 再导入。
+    </label>
+  </section>
+
     <div id="wsList"><div class="empty">加载中…</div></div>
   </section>
 </main>
@@ -161,6 +174,28 @@ $('#addForm').addEventListener('submit', async (e) => {
     e.target.reset();
   } catch (err) {
     toast('创建失败: ' + err.message);
+  }
+  load();
+});
+
+$('#importForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = { name: fd.get('name').trim(), withCache: $('#withCache').checked, withExtensions: $('#withExtensions').checked };
+  if (fd.get('source')) body.source = fd.get('source').trim();
+  if (fd.get('profile')) body.profile = fd.get('profile').trim();
+  const btn = e.target.querySelector('button');
+  btn.disabled = true;
+  btn.textContent = '导入中…';
+  try {
+    await api('/api/workspaces/import', { method: 'POST', body });
+    toast('已导入 ' + body.name);
+    e.target.reset();
+  } catch (err) {
+    toast('导入失败: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '导入';
   }
   load();
 });
