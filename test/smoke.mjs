@@ -56,6 +56,19 @@ try {
   r = await api('PATCH', `/api/workspaces/${NAME2}`, { name: 'bad/name' });
   ok(r.status !== 200, '改名非法名称被拒绝');
 
+  // --- 编辑其它属性 ---
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, { homepage: 'https://example.com', debugPort: 9223, notes: '测试备注' });
+  ok(r.status === 200 && r.data.homepage === 'https://example.com' && r.data.debugPort === 9223 && r.data.notes === '测试备注', '编辑 homepage/debugPort/notes 生效');
+
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, { homepage: '   ', debugPort: null, notes: '' });
+  ok(r.status === 200 && r.data.homepage === null && r.data.debugPort === null && r.data.notes === '', '空值清除字段生效');
+
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, { debugPort: 99999 });
+  ok(r.status !== 200, '非法调试端口被拒绝');
+
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, {});
+  ok(r.status === 200 && r.data.name === NAME2, '空 patch 不报错且名称不变');
+
   r = await api('POST', `/api/workspaces/${NAME2}/open`);
   ok(r.status === 200, 'open 启动');
   await new Promise((res) => setTimeout(res, 3000));

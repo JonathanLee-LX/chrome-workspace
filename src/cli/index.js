@@ -30,6 +30,9 @@ Chrome 工作区管理器 (chrome-ws) v0.1.0
   chrome-ws open <name> [url]                  打开工作区（url 缺省用 homepage）
   chrome-ws close <name> | close --all         关闭工作区
   chrome-ws rename <old> <new>                 修改工作区名称（需先关闭）
+  chrome-ws edit <name> [options]             编辑工作区属性
+      --name <新名> / --homepage <url> / --debug-port <n> / --notes "..."
+      传空值可清除字段（如 --homepage "" / --notes ""）
   chrome-ws rm <name> [--purge]                删除工作区（--purge 同时删数据目录）
   chrome-ws --help | --version
 `.trim();
@@ -296,6 +299,32 @@ async function main() {
       const ws = await api('PATCH', `/api/workspaces/${encodeURIComponent(old)}`, { name: neu });
       console.log(`${C.green}✔ 已改名:${C.reset} ${C.bold}${old}${C.reset} → ${C.bold}${ws.name}${C.reset}`);
       console.log(`  目录: ${ws.dir}`);
+      return;
+    }
+
+    case 'edit': {
+      const o = parseOpts(rest, { number: ['debug-port'] });
+      const name = o._[0];
+      if (!name) {
+        console.error('用法: chrome-ws edit <name> [--name 新名] [--homepage url] [--debug-port n] [--notes "..."]');
+        console.error('      传空值可清除字段（如 --homepage "" / --debug-port "" / --notes ""）');
+        process.exit(1);
+      }
+      const body = {};
+      if (o.name !== undefined) body.name = o.name;
+      if (o.homepage !== undefined) body.homepage = o.homepage;
+      if (o['debug-port'] !== undefined) body.debugPort = o['debug-port'];
+      if (o.notes !== undefined) body.notes = o.notes;
+      if (!Object.keys(body).length) {
+        console.error('未提供任何要修改的字段（--name/--homepage/--debug-port/--notes）');
+        process.exit(1);
+      }
+      const ws = await api('PATCH', `/api/workspaces/${encodeURIComponent(name)}`, body);
+      console.log(`${C.green}✔ 已更新工作区:${C.reset} ${C.bold}${ws.name}${C.reset}`);
+      console.log(`  名称: ${ws.name}`);
+      if (ws.homepage) console.log(`  首页: ${ws.homepage}`);
+      if (ws.debugPort) console.log(`  调试端口: ${ws.debugPort}`);
+      if (ws.notes) console.log(`  备注: ${ws.notes}`);
       return;
     }
 

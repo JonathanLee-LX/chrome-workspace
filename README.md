@@ -63,6 +63,8 @@ chrome-ws show <name>
 chrome-ws open <name> [url]
 chrome-ws close <name> | close --all
 chrome-ws rename <old> <new>                 改名（需先关闭，数据目录随迁）
+chrome-ws edit <name> [--name 新名] [--homepage url] [--debug-port n] [--notes "..."]
+                                            编辑属性（空值清除字段；改 name 需先关闭）
 chrome-ws rm <name> [--purge]
 ```
 

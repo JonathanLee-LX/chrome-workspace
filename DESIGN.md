@@ -78,7 +78,7 @@ chrome-ws   ──> ~/.chrome-ws/data/work        ┐
 | GET  | `/api/workspaces` | 列表（含运行状态） |
 | POST | `/api/workspaces` | 创建 `{name, homepage?, debugPort?, notes?}` |
 | GET  | `/api/workspaces/:name` | 详情 |
-| PATCH | `/api/workspaces/:name` | 改名 `{name}`（需先关闭；数据目录随迁；运行中 409） |
+| PATCH | `/api/workspaces/:name` | 编辑属性 `{name?, homepage?, debugPort?, notes?}`（改 name 需先关闭、数据目录随迁、运行中 409；homepage/debugPort/notes 运行中可改，空值清除） |
 | POST | `/api/workspaces/:name/open` | 打开 `{url?}`（未运行则启动；已运行仅开新页） |
 | POST | `/api/workspaces/:name/close` | 关闭（幂等） |
 | DELETE | `/api/workspaces/:name?purge=1` | 删除（`purge=1` 同时删数据目录） |
@@ -113,6 +113,8 @@ chrome-ws show <name>
 chrome-ws open <name> [url]                  url 缺省用 homepage
 chrome-ws close <name> | close --all
 chrome-ws rename <old> <new>                  改名（需先关闭；数据目录随迁）
+chrome-ws edit <name> [--name 新名] [--homepage url] [--debug-port n] [--notes "..."]
+                                            编辑属性（空值清除字段；改 name 需先关闭）
 chrome-ws rm <name> [--purge]
 ```
 

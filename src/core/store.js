@@ -42,26 +42,55 @@ export function removeWorkspace(cfg, name) {
   return ws;
 }
 
-export function renameWorkspace(cfg, name, newName) {
+export function updateWorkspace(cfg, name, patch = {}) {
   const ws = findByName(cfg, name);
   if (!ws) {
     throw Object.assign(new Error(`工作区不存在: ${name}`), { statusCode: 404 });
   }
-  const target = String(newName ?? '').trim();
-  if (!NAME_RE.test(target)) {
-    throw new Error(`工作区名称不合法: "${target}"（仅允许字母/数字/-/_，最长64位）`);
-  }
-  if (target === ws.name) return ws;
-  if (findByName(cfg, target)) {
-    throw Object.assign(new Error(`工作区已存在: ${target}`), { statusCode: 409 });
+
+  // 名称：合法 + 不重名 + 数据目录随迁
+  if (patch.name !== undefined) {
+    const target = String(patch.name ?? '').trim();
+    if (!NAME_RE.test(target)) {
+      throw new Error(`工作区名称不合法: "${target}"（仅允许字母/数字/-/_，最长64位）`);
+    }
+    if (target !== ws.name) {
+      if (findByName(cfg, target)) {
+        throw Object.assign(new Error(`工作区已存在: ${target}`), { statusCode: 409 });
+      }
+      const oldDir = ws.dir;
+      const newDir = wsDir(target);
+      if (fs.existsSync(oldDir) && oldDir !== newDir) {
+        fs.renameSync(oldDir, newDir);
+      }
+      ws.name = target;
+      ws.dir = newDir;
+    }
   }
 
-  const oldDir = ws.dir;
-  const newDir = wsDir(target);
-  if (fs.existsSync(oldDir) && oldDir !== newDir) {
-    fs.renameSync(oldDir, newDir);
+  // 首页：空串/空白 → null
+  if (patch.homepage !== undefined) {
+    const h = patch.homepage == null ? null : String(patch.homepage).trim() || null;
+    ws.homepage = h;
   }
-  ws.name = target;
-  ws.dir = newDir;
+
+  // 调试端口：空/undefined → null；否则 1-65535 整数
+  if (patch.debugPort !== undefined) {
+    if (patch.debugPort === null || patch.debugPort === '') {
+      ws.debugPort = null;
+    } else {
+      const p = Number(patch.debugPort);
+      if (!Number.isInteger(p) || p < 1 || p > 65535) {
+        throw new Error(`调试端口不合法: ${patch.debugPort}（应为 1-65535 的整数）`);
+      }
+      ws.debugPort = p;
+    }
+  }
+
+  // 备注：字符串
+  if (patch.notes !== undefined) {
+    ws.notes = patch.notes == null ? '' : String(patch.notes);
+  }
+
   return ws;
 }
