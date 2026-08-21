@@ -36,22 +36,45 @@ try {
   r = await api('GET', '/api/workspaces');
   ok(r.data.workspaces.some((w) => w.name === NAME), '列表中可见');
 
-  r = await api('POST', `/api/workspaces/${NAME}/open`);
+  // --- 改名 ---
+  const NAME2 = `${NAME}-r`;
+  const oldDir = r.data.workspaces.find((w) => w.name === NAME).dir;
+  r = await api('PATCH', `/api/workspaces/${NAME}`, { name: NAME2 });
+  ok(r.status === 200 && r.data.name === NAME2, `改名 ${NAME} → ${NAME2}`);
+  if (r.status === 200) {
+    const { existsSync } = await import('node:fs');
+    ok(!existsSync(oldDir) && existsSync(r.data.dir), '数据目录已随改名迁移');
+  }
+
+  r = await api('POST', '/api/workspaces', { name: 'conflict-tmp' });
+  ok(r.status === 201, '创建冲突测试工作区');
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, { name: 'conflict-tmp' });
+  ok(r.status === 409, '改名为已存在名称被拒绝');
+  r = await api('DELETE', '/api/workspaces/conflict-tmp?purge=1');
+  ok(r.status === 200, '清理冲突测试工作区');
+
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, { name: 'bad/name' });
+  ok(r.status !== 200, '改名非法名称被拒绝');
+
+  r = await api('POST', `/api/workspaces/${NAME2}/open`);
   ok(r.status === 200, 'open 启动');
   await new Promise((res) => setTimeout(res, 3000));
 
+  r = await api('PATCH', `/api/workspaces/${NAME2}`, { name: 'should-fail' });
+  ok(r.status === 409, '运行中改名被拒绝');
+
   r = await api('GET', '/api/workspaces');
-  const ws = r.data.workspaces.find((w) => w.name === NAME);
+  const ws = r.data.workspaces.find((w) => w.name === NAME2);
   ok(ws?.running, '3 秒后检测为运行中');
   ok(!!ws?.pid, `有 PID (${ws?.pid})`);
 
-  r = await api('POST', `/api/workspaces/${NAME}/close`);
+  r = await api('POST', `/api/workspaces/${NAME2}/close`);
   await new Promise((res) => setTimeout(res, 1500));
 
   r = await api('GET', '/api/workspaces');
-  ok(!r.data.workspaces.find((w) => w.name === NAME)?.running, 'close 后为停止');
+  ok(!r.data.workspaces.find((w) => w.name === NAME2)?.running, 'close 后为停止');
 
-  r = await api('DELETE', `/api/workspaces/${NAME}?purge=1`);
+  r = await api('DELETE', `/api/workspaces/${NAME2}?purge=1`);
   ok(r.status === 200 && r.data.purged, '删除（含数据目录）');
 
   // --- 导入继承现有配置 ---

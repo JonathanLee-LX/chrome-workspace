@@ -129,6 +129,15 @@ const server = http.createServer(async (req, res) => {
 
         if (parts.length === 3) {
           if (method === 'GET') return sendJSON(res, 200, serialize(ws));
+          if (method === 'PATCH') {
+            if (detector.isRunning(ws)) {
+              return sendJSON(res, 409, { error: `工作区正在运行（${ws.name}），请先关闭再改名` });
+            }
+            const body = await readBody(req);
+            const renamed = store.renameWorkspace(cfg, name, body?.name);
+            saveConfig(cfg);
+            return sendJSON(res, 200, serialize(renamed));
+          }
           if (method === 'DELETE') {
             const purge = u.searchParams.get('purge') === '1';
             store.removeWorkspace(cfg, name);

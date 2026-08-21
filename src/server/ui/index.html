@@ -134,6 +134,7 @@ async function load() {
         <div class="ws-actions">
           <button class="ghost" data-act="open">打开</button>
           <button class="ghost" data-act="close" ${w.running ? '' : 'disabled'}>关闭</button>
+          <button class="ghost" data-act="rename" ${w.running ? 'disabled' : ''}>改名</button>
           <button class="danger" data-act="del">删除</button>
         </div>
       </div>`).join('');
@@ -152,11 +153,16 @@ listEl.addEventListener('click', async (e) => {
   try {
     if (act === 'open') await api(`/api/workspaces/${encodeURIComponent(name)}/open`, { method: 'POST' });
     if (act === 'close') await api(`/api/workspaces/${encodeURIComponent(name)}/close`, { method: 'POST' });
+    if (act === 'rename') {
+      const neu = prompt(`将工作区「${name}」改名为：`, name);
+      if (!neu || neu.trim() === name) return;
+      await api(`/api/workspaces/${encodeURIComponent(name)}`, { method: 'PATCH', body: { name: neu.trim() } });
+    }
     if (act === 'del') {
       if (!confirm(`确定删除工作区「${name}」？`)) return;
       await api(`/api/workspaces/${encodeURIComponent(name)}?purge=0`, { method: 'DELETE' });
     }
-    toast(act === 'open' ? `已打开 ${name}` : act === 'close' ? `已关闭 ${name}` : `已删除 ${name}`);
+    toast(act === 'open' ? `已打开 ${name}` : act === 'close' ? `已关闭 ${name}` : act === 'rename' ? `已改名` : `已删除 ${name}`);
   } catch (err) {
     toast('操作失败: ' + err.message);
   }

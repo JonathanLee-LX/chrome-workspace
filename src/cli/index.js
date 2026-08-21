@@ -29,6 +29,7 @@ Chrome 工作区管理器 (chrome-ws) v0.1.0
   chrome-ws show <name>                        查看单个工作区
   chrome-ws open <name> [url]                  打开工作区（url 缺省用 homepage）
   chrome-ws close <name> | close --all         关闭工作区
+  chrome-ws rename <old> <new>                 修改工作区名称（需先关闭）
   chrome-ws rm <name> [--purge]                删除工作区（--purge 同时删数据目录）
   chrome-ws --help | --version
 `.trim();
@@ -280,11 +281,21 @@ async function main() {
     }
 
     case 'rm': {
-      const o = parseOpts(rest);
+      const o = parseOpts(rest, { bool: ['purge'] });
       const name = o._[0];
       if (!name) { console.error('用法: chrome-ws rm <name> [--purge]'); process.exit(1); }
       const { purged } = await api('DELETE', `/api/workspaces/${encodeURIComponent(name)}?purge=${o.purge ? 1 : 0}`);
       console.log(`${C.green}✔ 已删除工作区:${C.reset} ${name}${purged ? '（含数据目录）' : ''}`);
+      return;
+    }
+
+    case 'rename': {
+      const old = rest[0];
+      const neu = rest[1];
+      if (!old || !neu) { console.error('用法: chrome-ws rename <old> <new>'); process.exit(1); }
+      const ws = await api('PATCH', `/api/workspaces/${encodeURIComponent(old)}`, { name: neu });
+      console.log(`${C.green}✔ 已改名:${C.reset} ${C.bold}${old}${C.reset} → ${C.bold}${ws.name}${C.reset}`);
+      console.log(`  目录: ${ws.dir}`);
       return;
     }
 

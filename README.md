@@ -62,6 +62,7 @@ chrome-ws list
 chrome-ws show <name>
 chrome-ws open <name> [url]
 chrome-ws close <name> | close --all
+chrome-ws rename <old> <new>                 改名（需先关闭，数据目录随迁）
 chrome-ws rm <name> [--purge]
 ```
 
