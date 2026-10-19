@@ -37,5 +37,13 @@
   "engines": {
     "node": ">=18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanLee-LX/chrome-workspace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JonathanLee-LX/chrome-workspace/issues"
+  },
+  "homepage": "https://github.com/JonathanLee-LX/chrome-workspace#readme",
   "license": "MIT"
 }
