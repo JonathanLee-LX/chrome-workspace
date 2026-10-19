@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" id="themeColor" content="#ffffff"/>
+<link rel="icon" type="image/png" href="/icon.png"/>
 <title>Chrome 工作区管理器</title>
 <script>
   // 首帧前应用主题，避免暗色模式闪烁（shadcn 暗色模式约定：.dark class 挂在 html 上）
@@ -100,8 +101,7 @@
   .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .logo {
     width: 28px; height: 28px; border-radius: calc(var(--radius) - 2px); flex: none;
-    background: linear-gradient(135deg, var(--primary), var(--primary)); color: var(--primary-foreground);
-    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;
+    object-fit: cover; display: block;
   }
   header h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .header-right { display: flex; align-items: center; gap: 10px; flex: none; }
@@ -265,7 +265,7 @@
 <a class="skip-link" href="#main">跳到主要内容</a>
 <header>
   <div class="brand">
-    <div class="logo" aria-hidden="true">◆</div>
+    <img class="logo" src="/icon.png" alt="chrome-ws" aria-hidden="true"/>
     <h1>Chrome 工作区管理器</h1>
   </div>
   <div class="header-right">

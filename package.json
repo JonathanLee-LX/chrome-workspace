@@ -1,15 +1,38 @@
 {
-  "name": "chrome-ws",
+  "name": "chrome-workspace",
   "version": "0.1.0",
   "description": "Chrome 工作区管理器：通过独立 user-data-dir 并行运行多个 Chrome 实例",
   "type": "module",
   "bin": {
+    "chrome-workspace": "src/cli/index.js",
     "chrome-ws": "src/cli/index.js"
   },
+  "files": [
+    "src"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "keywords": [
+    "chrome",
+    "workspace",
+    "profile",
+    "multi-instance",
+    "cli",
+    "user-data-dir",
+    "macos"
+  ],
+  "author": "jonathanleelx <jonathanleelx@gmail.com>",
   "scripts": {
     "start": "node src/server/server.js",
     "smoke": "node test/smoke.mjs",
+    "test": "node test/smoke.mjs",
+    "prepublishOnly": "npm test",
     "link": "npm link"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "engines": {
     "node": ">=18"

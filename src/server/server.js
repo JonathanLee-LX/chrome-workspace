@@ -187,9 +187,10 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(file);
     }
-    if (method === 'GET' && parts[0] === 'favicon.ico') {
-      res.writeHead(204).end();
-      return;
+    if (method === 'GET' && (parts[0] === 'favicon.ico' || parts[0] === 'icon.png')) {
+      const file = fs.readFileSync(path.join(UI_DIR, 'icon.png'));
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      return res.end(file);
     }
 
     return sendJSON(res, 404, { error: 'not found' });
